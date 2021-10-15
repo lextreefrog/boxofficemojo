@@ -3,6 +3,7 @@ library(httr)
 library(rvest)
 library(foreach)
 library(iterators)
+library(zoo)
 
 # Web scraping functions - boxofficemojo
 makeTableFromUrl <- function(pageUrl) {
@@ -74,15 +75,35 @@ saveAllYears <- function(start_year = 1982, end_year = 2021) {
 cleanBoxOfficeDt <- function(bdt) {
   # clean date
   bdt[, week_start_date := paste(gsub("-.*", "", date), year) %>% as.Date(format = "%B %d %Y")]
+  
   # make number columns better
   number_cols <- c("rank", "rank_lw", "gross", "gross_twlw", "theaters", 
                    "change", "average", "total_gross", "weeks")
   bdt[, (number_cols) := lapply(.SD, FUN = function(x) as.numeric(gsub("[\\$,%]", "", x))),
       .SDcols = number_cols]
+  
   # calculated vars
   bdt[, weekly_total := sum(gross), by = date]
   bdt[, share_of_wallet := gross / weekly_total]
-  return(bdt)
+  
+  # We need a release year column for films that sell in multiple years
+  # We cant take the min because of titles like "Fantastic Four", "The Lion King", "The Grudge"
+  # Use the "weeks" column to distinguish release years in these cases
+  
+  # 1. Ensure ordered by date and lag weeks
+  bdt <- bdt[order(release, distributor, week_start_date)]
+  bdt[, lagged_weeks := shift(weeks, n = 1), by = .(release, distributor)]
+  
+  # 2. Create a dummy column to count "weeks" column resets and turn into grouping column
+  bdt[lagged_weeks > weeks, increment_point := 1]
+  bdt[, increment_group := cumsum(!is.na(increment_point)), by = .(release, distributor)]
+
+  # 3. Group by min year
+  bdt[, release_year := min(year), by = .(release, distributor, increment_group)]
+
+  return(bdt[, ':='(lagged_weeks    = NULL,
+                    increment_point = NULL,
+                    increment_group = NULL)])
 }
 
 

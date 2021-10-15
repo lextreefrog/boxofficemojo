@@ -9,22 +9,48 @@ addTconstToBoxOfficeDt <- function(rawBasicsDt, cleanBoxOfficeDt) {
   # and remove movies that came out before we have b.o. data
   movieBasicsDt <- rawBasicsDt %>%
     .[titleType == "movie"] %>%
-    .[startYear %between% cleanBoxOfficeDt[, c(min(year), max(year))]]
+    .[startYear %between% cleanBoxOfficeDt[, c(min(release_year), max(release_year))]]
   
-  boxOfficeMovies <- cleanBoxOfficeDt[, .N, by = .(release, year)][, -3][, has_boxdata := TRUE]
+  boxOfficeMovies <- cleanBoxOfficeDt[, .N, by = .(release, release_year)][, -3][, has_boxdata := TRUE]
   basicsMovies    <- movieBasicsDt[, N := .N, by = .(primaryTitle, startYear)] %>%
-    .[, .(release = primaryTitle, year = as.integer(startYear), tconst, N)]
-  boxOfficeMerged <- merge(boxOfficeMovies, basicsMovies, by = c("release", "year"),
+    .[, .(release = primaryTitle, 
+          originalTitle, 
+          runtimeMinutes,
+          release_year = as.integer(startYear),
+          tconst, N)]
+  
+  # To mitigate problem of duplicate tconsts, we prune out films that occur multiple times in the 
+  # same year that don't have same original and primary titles
+  # this is in effect removing foreign films, not a perfect solution.
+  basicsSinglets <- basicsMovies[N == 1]
+  basicsDupes    <- basicsMovies[N > 1]
+  basicsResolved <- rbind(basicsSinglets,
+                          basicsDupes[release == originalTitle])
+  basicsResolved[, N := .N, by = .(release, release_year)]
+  
+  # We can also prune out movies without runtimes (affects some disney remakes like "Beauty and the Beast")
+  basicsSinglets <- basicsResolved[N == 1]
+  basicsDupes    <- basicsResolved[N > 1]
+  basicsResolved <- rbind(basicsSinglets,
+                          basicsDupes[runtimeMinutes != "\\N"])
+  basicsResolved[, N := .N, by = .(release, release_year)]
+  
+  # Some movies (Taken, Taken 3, Paranormal Activity) had intl releases year earlier than domestic
+  # So the join doesn't work because of the year. 
+  # TODO: resolve this
+  
+  
+  boxOfficeMerged <- merge(boxOfficeMovies, basicsResolved, by = c("release", "release_year"),
                            all.x = TRUE)
   
-  # Multiple movies can come out in the same year with the same title
-  # ex: Brothers - 2015, Wilson 2017.
-  # Need a rule to resolve these, but for now treat them like we don't know their tconst
+  # Multiple movies can have identical release_year + title
+  # ex: Brothers - 2015, Wilson - 2017.
+  # ONLY FOR THESE CASES: try to resolve to movies where primary==original title, else NA
   # $164B in sales to movies with tconst in output, $28B without, $5B of which from unresolved tconsts
   boxOfficeMerged[N > 1, tconst := NA]
   
-  output <- merge(cleanBoxOfficeDt, boxOfficeMerged[, .(release, year, tconst)] %>% unique,
-                  by = c("release", "year"),
+  output <- merge(cleanBoxOfficeDt, boxOfficeMerged[, .(release, release_year, tconst)] %>% unique,
+                  by = c("release", "release_year"),
                   all.x = TRUE)
   return(output)
   

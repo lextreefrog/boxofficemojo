@@ -87,10 +87,10 @@ cleanBoxOfficeDt <- function(bdt) {
 
 
 if (FALSE) {
-  setwd("~/Documents/boxofficemojo/")
+  setwd("~/my_code/boxofficemojo/")
   source("boxofficemojo.R")
   # saveAllYears()
-  setwd("./yearly_files")
+  setwd("../data/yearly_files")
   megaDt <- list.files() %>% lapply(fread) %>% rbindlist %>% cleanBoxOfficeDt()
   exDt <- list.files()[10] %>% fread %>% cleanBoxOfficeDt
   exDt[, weekly_total := sum(gross), by = date]

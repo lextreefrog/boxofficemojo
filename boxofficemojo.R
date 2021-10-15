@@ -6,13 +6,18 @@ library(iterators)
 library(zoo)
 
 # Web scraping functions - boxofficemojo
-makeTableFromUrl <- function(pageUrl) {
-  
-  pageHtml <- read_html(pageUrl)
-  
+makeTableFromUrl <- function(pageUrl, timeoutHack = TRUE) {
+  if (timeoutHack) {
+    temp <- "temp.html"
+    download.file(pageUrl, destfile = temp, quiet = TRUE)
+    pageHtml <- read_html(temp)
+    unlink("scrapedpage.html")
+  } else {
+    pageHtml <- read_html(pageUrl)
+  }
   # Columns are grouped in these two calls or called individually
   # These get returned as one interleaved vector, explaining the modulo-weirdness below
-  intFields <- html_nodes(pageHtml, css = ".mojo-field-type-positive_integer") %>% html_text
+  intFields <- html_nodes(pageHtml, css = ".mojo-field-type-positive_integer") %>% html_text()
   estFields <- html_nodes(pageHtml, css = ".mojo-estimatable")                 %>% html_text()
   return(
     data.table(
@@ -20,6 +25,7 @@ makeTableFromUrl <- function(pageUrl) {
       rank        = html_nodes(pageHtml, css = ".mojo-sort-column") %>% html_text() %>% .[-1],
       rank_lw     = intFields[(seq(1, length(intFields)) %% 3) == 1][-1], 
       release     = html_nodes(pageHtml, css = ".mojo-cell-wide") %>% html_text() %>% .[-1],
+      release_url = html_nodes(pageHtml, css = ".mojo-cell-wide > a") %>% html_attr(name = 'href'),
       gross       = estFields[(seq(1, length(estFields)) %% 6) == 1][-1],
       gross_twlw  = estFields[(seq(1, length(estFields)) %% 6) == 2][-1],
       theaters    = intFields[(seq(1, length(intFields)) %% 3) == 2][-1], # appears in both groups
@@ -53,9 +59,10 @@ generateValidUrls <- function(market = "domestic", snapshot = "weekend",
 saveYearTable <- function(year) {
   urlTable <- generateValidUrls(start_year = year, end_year = year)
   allWeekends <- foreach(url = iter(urlTable, by = "row")) %do% {
-    print(url$week)
+    print(paste0("Working on week ", url$week))
+    
     thisWeekend <- makeTableFromUrl(url$full_url)
-    print(nrow(thisWeekend))
+    print(paste0("This week has this many rows: ", nrow(thisWeekend)))
     thisWeekend
   } %>% rbindlist
   allWeekends[, year := year]

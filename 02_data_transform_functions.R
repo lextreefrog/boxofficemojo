@@ -37,8 +37,8 @@ addTconstToBoxOfficeDt <- function(rawBasicsDt, cleanBoxOfficeDt) {
   
   # Some movies (Taken, Taken 3, Paranormal Activity) had intl releases year earlier than domestic
   # So the join doesn't work because of the year. 
-  # TODO: resolve this
-  
+  # TODO: resolve this -- simulate the data with year + 1, and get the winners
+  # - might want to only do this with movies with box office returns greater than X
   
   boxOfficeMerged <- merge(boxOfficeMovies, basicsResolved, by = c("release", "release_year"),
                            all.x = TRUE)

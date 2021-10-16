@@ -4,6 +4,7 @@ library(rvest)
 library(foreach)
 library(iterators)
 library(zoo)
+library(ggplot2)
 
 # Web scraping functions - boxofficemojo
 makeTableFromUrl <- function(pageUrl, timeoutHack = TRUE) {

@@ -92,7 +92,7 @@ filterNamesDt <- function(keyedBoxOfficeDt, crewNamesDt) {
 
 getDirectorData <- function(director = "Steven Spielberg", 
                             keyedBoxOfficeDt,
-                            nameDt) {
+                            nameDt, sort_factor_by = "release") {
 
   directorNconsts <- nameDt[primaryName == director, unique(nconst)]
   if (length(directorNconsts) > 1) {
@@ -110,7 +110,17 @@ getDirectorData <- function(director = "Steven Spielberg",
   }
   filteredData <- keyedBoxOfficeDt[grepl(pattern = directorNconst, x = directors)]
   filteredData[, director_name := director]
-  filteredData[, opening_week  := min(week_start_date), by = release]
+  filteredData[, opening_week  := min(week_start_date), by = release] 
+  
+  # make factor levels for release
+  # if (sort_factor_by == "release date") {
+  #   levels <- filteredData[order(opening_week), release] %>% unique
+  # } else {
+  #   levels <- filteredData[order(-total_gross), release] %>% unique
+  # }
+  # 
+  # filteredData[, release := factor(release, levels = levels)]
+  
   return(filteredData)
 }
 
@@ -127,7 +137,7 @@ plotTotalsBar <- function(directorDt) {
     .[, ':='(share_of_total = domestic_total / sum(domestic_total),
              total_label    = paste0("$", round(domestic_total / 1000000, digits = 3), "M"))]
   thePlot <- plotDt %>%
-    ggplot(aes(x = director, y = share_of_total, fill = factor(release, levels = rev(release)))) + 
+    ggplot(aes(x = director_name, y = share_of_total, fill = factor(release, levels = rev(release)))) + 
     geom_bar(stat = "identity") + 
     coord_flip() +
     theme_minimal() + 
@@ -135,32 +145,31 @@ plotTotalsBar <- function(directorDt) {
           axis.text = element_blank(),
           plot.background = element_blank(),panel.grid = element_blank(),
           legend.position = "none")
+  return(
+    thePlot
+  )
 }
 
-
-
 plotDirectorDataWalletShare <- function(directorDt) {
-  plotDt <- getDirectorData(director = director,
-                            keyedBoxOfficeDt = keyedBoxOfficeDt,
-                            nameDt = nameDt) %>%
+  plotDt <- directorDt %>%
     .[, decade := getDecade(release_year)] %>% # save this for the tool tip in plotly
-    .[, opening_week_label := format(opening_week, "%b-%d")]
+    .[, opening_week_label := format(as.Date(opening_week), "%b-%d")]
   thePlot <- plotDt %>%
     ggplot(aes(x = weeks, y = share_of_wallet, color = release)) + 
-    geom_line() +  
+    geom_line() + 
     # geom_label_repel(aes(x = 1, label = opening_week_label), hjust = 1) + 
     xlab("Number of Weeks since Box Office Debut") + 
     ylab("Share of Weekend Wallet")
-  ggplotly(thePlot)
+  thePlot
 }
 
 if (FALSE) {
   source("~/my_code/boxofficemojo/boxofficemojo.R")
   setwd("~/my_code/data")
   cleanBoxOfficeDt <- fread("domestic_weekend.csv") %>% cleanBoxOfficeDt()
-  rawBasicsDt <- fread("title_basics_movie.csv")
-  rawCrewData    <- fread("crew_data.csv") 
-  nameDt         <- fread("name_data.csv")
+  rawBasicsDt      <- fread("title_basics_movie.csv")
+  rawCrewData      <- fread("crew_data.csv") 
+  nameDt           <- fread("name_data.csv")
   
   keyedBoxOfficeDt <- rawBasicsDt %>%
     addTconstToBoxOfficeDt(cleanBoxOfficeDt = cleanBoxOfficeDt) %>%

@@ -25,11 +25,10 @@ toolTipForMovie <- function(directorDt, releaseName) {
 }
 
 # TODO:
-# 1. Update info pane to printActiveMovies() fn (next iteration will be make it plot)
-# 2. plotActiveMovies()
 # 4. Decade bands at bottom of barplot :)
 # 5. Add drop-down Option to sort choronologically or in $$$$ order
 # - add box office rank to tooltip
+# Update the top plot to be prettier - maybe a treeplot?
 # - put a disclaimer somewhere about movies before 1982
 # 6. pass alpha arguments to the bar plot to grey out unselected movies
 # clear and select all buttons on the side panel 
@@ -40,13 +39,37 @@ ui <- basicPage(
     
     sidebarPanel(
       
-      selectInput("director", "Director Selector:",
-                  choices = c("John Carpenter", "Edgar Wright", "George Miller"),
+      selectInput("director", "Director Selector:", # need to trim the director selections
+                  choices = c("John Carpenter",
+                              "Edgar Wright", 
+                              "Jon Favreau",
+                              "Christopher Nolan",
+                              "Bill Condon",
+                              "Jennifer Lee",
+                              "George Lucas",
+                              "Michael Bay",
+                              "Mel Gibson",
+                              "Steven Spielberg",
+                              "Todd Phillips",
+                              "George Miller", 
+                              "Peter Jackson",
+                              "Ryan Coogler",
+                              "J.J. Abrams",
+                              "Anthony Russo", # interesting 
+                              "Joe Russo",
+                              "James Wan",
+                              "James Gunn",
+                              "Guy Ritchie",
+                              "Zack Snyder",
+                              "Quentin Tarantino", 
+                              "Tim Burton", 
+                              "Werner Herzog", 
+                              "Steve McQueen", "David Cronenberg"),
                   selected = NULL)
     ),
     mainPanel(
-      plotOutput("plot1", click = "plot_click", height = 300, hover = hoverOpts(id ="plot_hover")),
-      plotOutput("plot2", height = 450),
+      plotOutput("plot1", click = "plot_click", height = 50, hover = hoverOpts(id ="plot_hover")),
+      plotOutput("plot2"),
       verbatimTextOutput("hover_info")
     )
   )

@@ -159,7 +159,8 @@ plotDirectorDataWalletShare <- function(directorDt) {
     geom_line() + 
     # geom_label_repel(aes(x = 1, label = opening_week_label), hjust = 1) + 
     xlab("Number of Weeks since Box Office Debut") + 
-    ylab("Share of Weekend Wallet")
+    ylab("Share of Weekend Wallet") + 
+    theme(legend.position = "top")
   thePlot
 }
 

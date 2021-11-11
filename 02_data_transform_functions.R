@@ -128,21 +128,51 @@ getDirectorTotals <- function(directorDt) {
   return(
     directorDt %>%
       .[order(opening_week), .(domestic_total = max(total_gross, na.rm = TRUE)),
-        by = .(director_name, release, release_year, opening_week)]
+        by = .(director_name, release, release_year, opening_week)] %>%
+      .[, ':='(share_of_total = domestic_total / sum(domestic_total),
+               total_label    = paste0("$", round(domestic_total / 1000000, digits = 3), "M"),
+               release_f      = factor(release, levels = release))] %>% 
+      .[, cum_share := cumsum(share_of_total)] %>%
+      .[order(domestic_total), ':='(barsplot_order = (.N :1),
+                                    barsplot_label = paste0((.N : 1), ". ", release,
+                                                            " (", release_year, ")"))]
+    
   )
 }
 
-plotTotalsBar <- function(directorDt) {
-  plotDt <- getDirectorTotals(directorDt) %>%
-    .[, ':='(share_of_total = domestic_total / sum(domestic_total),
-             total_label    = paste0("$", round(domestic_total / 1000000, digits = 3), "M"))]
+plotTotalsBar <- function(totalsDt, activeReleases = NULL) {
+  # totalsDt comes in ordered in the order we want
+  plotDt <- totalsDt %>%
+    .[, active_a := ifelse(release %in% activeReleases, 1, .47)]
   thePlot <- plotDt %>%
-    ggplot(aes(x = director_name, y = share_of_total, fill = factor(release, levels = rev(release)))) + 
+    ggplot(aes(x = director_name, y = -share_of_total, fill = release_f, alpha = active_a, color = "#808080")) + 
     geom_bar(stat = "identity") + 
     coord_flip() +
+    scale_color_manual(values = "#808080") + 
     theme_minimal() + 
     theme(axis.title = element_blank(), 
           axis.text = element_blank(),
+          plot.background = element_blank(),panel.grid = element_blank(),
+          legend.position = "none")
+  return(
+    thePlot
+  )
+}
+
+plotTotalBars <- function(totalsDt, activeReleases) {
+  plotDt <- totalsDt[order(domestic_total)][, x := seq_len(.N)]
+  plotDt[, barsplot_label_f := factor(barsplot_label, levels = barsplot_label)]
+  thePlot <- plotDt %>%
+    ggplot(aes(x = barsplot_label_f, y = domestic_total, fill = release_f)) + 
+    geom_bar(stat = "identity") + 
+    scale_x_discrete(labels = ifelse(plotDt$release %in% activeReleases, plotDt$barsplot_label, "")) + 
+    # xlim(c(0, pmax(plotDt[, .N], 10))) + 
+    coord_flip() +
+    ggtitle("Box office totals") + 
+    scale_color_manual(values = "#808080") + 
+    theme_minimal() + 
+    theme(axis.title = element_blank(), 
+          axis.text.x = element_blank(),
           plot.background = element_blank(),panel.grid = element_blank(),
           legend.position = "none")
   return(
@@ -160,7 +190,7 @@ plotDirectorDataWalletShare <- function(directorDt) {
     # geom_label_repel(aes(x = 1, label = opening_week_label), hjust = 1) + 
     xlab("Number of Weeks since Box Office Debut") + 
     ylab("Share of Weekend Wallet") + 
-    theme(legend.position = "top")
+    theme(legend.position = "none")
   thePlot
 }
 
